@@ -1,0 +1,7 @@
+.Rproj.user/
+.git/
+.Rhistory
+.Rproj
+.RData
+
+*.gz

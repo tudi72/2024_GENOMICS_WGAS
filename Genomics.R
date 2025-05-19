@@ -13,6 +13,9 @@
 # BiocManager::install("org.Hs.eg.db")
 # BiocManager::install("vcfR")
 
+# install.packages("httpgd")
+# install.packages("languageserver")
+
 library("mice")
 library("httr")
 library("jsonlite")
@@ -60,55 +63,79 @@ ds <- createDataset()
 ds$snps
 
 #-----------------------Visualizing genotyping data-----------------------------
+png("plot1_basic_manhattan.png", width=1200, height=600)
 kp <- plotKaryotype(plot.type=4)
 kp <- kpPlotManhattan(kp, data = ds$snps)
+dev.off()
+png("plot2_highlight_chr3.png", width=1200, height=600)
 kp <- plotKaryotype(plot.type=4)
 kp <- kpPlotManhattan(kp, data=ds$snps, highlight = "chr3:1-30000000")
+dev.off()
+png("plot3_highlight_peaks.png", width=1200, height=600)
 kp <- plotKaryotype(plot.type = 4)
 kp <- kpPlotManhattan(kp, data=ds$snps, highlight = ds$peaks, points.cex = 0.8)
-
+dev.off()
+png("plot4_multicolor_tracks.png", width=1200, height=800)
 kp <- plotKaryotype(plot.type=4)
 kp <- kpPlotManhattan(kp, data=ds$snps, points.col = "brewer.set1", r0=autotrack(1,5))
 kp <- kpPlotManhattan(kp, data=ds$snps, points.col = "2blues", r0=autotrack(2,5))
 kp <- kpPlotManhattan(kp, data=ds$snps, points.col = "greengray", r0=autotrack(3,5))
 kp <- kpPlotManhattan(kp, data=ds$snps, points.col = "rainbow", r0=autotrack(4,5))
 kp <- kpPlotManhattan(kp, data=ds$snps, points.col = c("orchid", "gold", "orange"), r0=autotrack(5,5))
-
+dev.off()
 #-----------------Creating a gradient for point visualization-------------------
 transf.pval <- -log10(ds$snps$pval)
-points.col <- colByValue(transf.pval, colors=c("#BBBBBB", "orange"))
-kp <- plotKaryotype(plot.type=4)
-kp <- kpPlotManhattan(kp, data=ds$snps, points.col = points.col)
+points.col  <- colByValue(transf.pval, colors=c("#BBBBBB", "orange"))
+kp          <- plotKaryotype(plot.type=4)
+kp          <- kpPlotManhattan(kp, data=ds$snps, points.col = points.col)
 
 #-----------------Modifying line and highlight colors---------------------------
 kp <- plotKaryotype(plot.type=4)
-kp <- kpPlotManhattan(kp, data=ds$snps,
-                      highlight = ds$peaks, highlight.col = "orchid",
-                      suggestive.col="orange", suggestive.lwd = 3,
-                      genomewide.col = "red", genomewide.lwd = 6)
-
+kp <- kpPlotManhattan(kp, 
+  data            = ds$snps,
+  highlight       = ds$peaks, 
+  highlight.col   = "orchid",
+  suggestive.col  ="orange", 
+  suggestive.lwd  = 3,
+  genomewide.col  = "red", 
+  genomewide.lwd  = 6)
 #-----------------------Controlling axis look-----------------------------------
-transf.pval <- -log10(ds$snps$pval)
-kp <- plotKaryotype(plot.type=4)
-kp <- kpPlotManhattan(kp, data=ds$snps, pval = transf.pval, logp = FALSE )
-kp <- plotKaryotype(plot.type=4)
-kp <- kpPlotManhattan(kp, data=ds$snps)
-kpAxis(kp, ymin=0, ymax=kp$latest.plot$computed.values$ymax)
-kp <- plotKaryotype(plot.type=4)
-kp <- kpPlotManhattan(kp, data=ds$snps)
-ymax <- kp$latest.plot$computed.values$ymax
-ticks <- c(0, seq_len(floor(ymax)))
-kpAxis(kp, ymin=0, ymax=ymax, tick.pos = ticks)
-kp <- plotKaryotype(plot.type=4)
-kp <- kpPlotManhattan(kp, data=ds$snps, ymax=10)
-kpAxis(kp, ymin = 0, ymax=10, numticks = 11)
+library(karyoploteR)
 
-#---------------------Labelling top significant SNP per chromosome--------------
-kp <- plotKaryotype(plot.type=4)
-kp <- kpPlotManhattan(kp, data=ds$snps, ymax=10)
+transf.pval <- -log10(ds$snps$pval) # Manhattan -log10(pval)
+png("plot5_log10pval.png", width=1200, height=600)
+kp          <- plotKaryotype(plot.type=4)
+kp          <- kpPlotManhattan(kp, data=ds$snps, pval = transf.pval, logp = FALSE)
+dev.off()
+
+png("plot6_axis_autoymax.png", width=1200, height=600) # Manhattan with axis
+kp        <- plotKaryotype(plot.type=4)
+kp        <- kpPlotManhattan(kp, data=ds$snps)
+kpAxis(kp, ymin=0, ymax=kp$latest.plot$computed.values$ymax)
+dev.off()
+
+png("plot7_custom_ticks.png", width=1200, height=600)
+kp      <- plotKaryotype(plot.type=4)
+kp      <- kpPlotManhattan(kp, data=ds$snps)
+ymax    <- kp$latest.plot$computed.values$ymax
+ticks   <- c(0, seq_len(floor(ymax)))
+kpAxis(kp, ymin=0, ymax=ymax, tick.pos = ticks)
+dev.off()
+
+png("plot8_ymax_10_ticks.png", width=1200, height=600)
+kp      <- plotKaryotype(plot.type=4)
+kp      <- kpPlotManhattan(kp, data=ds$snps, ymax=10)
 kpAxis(kp, ymin = 0, ymax=10, numticks = 11)
-snps <- kp$latest.plot$computed.values$data
-suggestive.thr <- kp$latest.plot$computed.values$suggestiveline
+dev.off()
+
+png("plot9_manhattan_ymax10.png", width=1200, height=600)
+kp      <- plotKaryotype(plot.type=4)
+kp      <- kpPlotManhattan(kp, data=ds$snps, ymax=10)
+kpAxis(kp, ymin = 0, ymax=10, numticks = 11)
+dev.off()
+#---------------------Labelling top significant SNP per chromosome--------------
+snps            <- kp$latest.plot$computed.values$data
+suggestive.thr  <- kp$latest.plot$computed.values$suggestiveline
 
 #---------------Get the names of the top SNP per chr----------------------------
 top.snps  <- tapply(seq_along(snps), seqnames(snps), function(x) {
@@ -120,13 +147,14 @@ top.snps  <- tapply(seq_along(snps), seqnames(snps), function(x) {
 top.snps <- top.snps[snps[top.snps]$y>suggestive.thr]
 top.snps <- snps[top.snps]
 
-kp <- plotKaryotype(plot.type=4)
-kp <- kpPlotManhattan(kp, data=ds$snps, ymax=10)
+png("plot10_manhattan_plot_peak.png", width = 1200, height = 800)  # You can adjust width/height
+kp      <- plotKaryotype(plot.type=4)
+kp      <- kpPlotManhattan(kp, data=ds$snps, ymax=10)
 kpAxis(kp, ymin = 0, ymax=10, numticks = 11)
 kpText(kp, data = top.snps, labels = names(top.snps), ymax=10, pos=3)
-
+dev.off()
 #-------------------SIGNIFICANT VARIANTS INFO-----------------------------------
-ensembl <- useMart("ENSEMBL_MART_SNP", dataset="hsapiens_snp")
+ensembl   <- useMart("ENSEMBL_MART_SNP", dataset="hsapiens_snp")
 
 nt.biomart <- getBM(
   attributes = c("refsnp_id","allele","chr_name","chrom_start","chrom_strand","associated_gene","ensembl_gene_stable_id"),

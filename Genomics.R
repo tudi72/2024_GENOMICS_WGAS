@@ -107,15 +107,13 @@ kpAxis(kp, ymin = 0, ymax=10, numticks = 11)
 kp <- plotKaryotype(plot.type=4)
 kp <- kpPlotManhattan(kp, data=ds$snps, ymax=10)
 kpAxis(kp, ymin = 0, ymax=10, numticks = 11)
-
-
 snps <- kp$latest.plot$computed.values$data
 suggestive.thr <- kp$latest.plot$computed.values$suggestiveline
 
 #---------------Get the names of the top SNP per chr----------------------------
-top.snps <- tapply(seq_along(snps), seqnames(snps), function(x) {
- in.chr <- snps[x]
- top.snp <- in.chr[which.max(in.chr$y)]
+top.snps  <- tapply(seq_along(snps), seqnames(snps), function(x) {
+ in.chr   <- snps[x]
+ top.snp  <- in.chr[which.max(in.chr$y)]
  return(names(top.snp))
 })
 #--------------------Filter by suggestive line----------------------------------
@@ -138,159 +136,98 @@ nt.biomart <- getBM(
   uniqueRows = TRUE,
   filters    = "snp_filter"
   )
-
-#---------TASK2. PANCREATIC CANCER RISK GENOTYPE--------------------------------
-#Generate a processed data set based on risk genes for pancreatic cancer
-genes_risk <- c("PDX1" ,        "KLF5",   "BCAR1", 
-                "HNF1B",   "LINC00673",     "GRP", 
-                "WNT2B",       "NOC2L",   "ZNRF3",
-                "ETAA1",        "TP63",    "TERT", 
-                "TNS3" ,       "SUGCT",   "HNF4G", 
+# ---------TASK2. PANCREATIC CANCER RISK GENOTYPE------------------------------
+genes_risk <- c("PDX1" , "KLF5"     , "BCAR1", 
+                "HNF1B", "LINC00673", "GRP", 
+                "WNT2B", "NOC2L"    , "ZNRF3",
+                "ETAA1", "TP63"     , "TERT", 
+                "TNS3" , "SUGCT"    , "HNF4G", 
                 "PVT1")
-genes_risk_rownames <- do.call(paste, c(expand.grid(genes_risk, c("low", "intermediate", "high")), sep = "_"))
 
-prognosis_table <- matrix(nrow = length(genes_risk_rownames))
-outcome_vector <- c()
+genes_risk_rownames <- do.call(paste, c(expand.grid(genes_risk, c("low", "intermediate", "high")), sep = "_"))
+prognosis_table     <- matrix(nrow = length(genes_risk_rownames))
+outcome_vector      <- c()
 
 set.seed(322)
-# iterate each patient 
 for (patient in 1:1000) {
-  # create a seed for display high or low
   outcome_seed <- sample(1:100, 1)
+  
   if (outcome_seed <= 80) {
-    gene_outcome <-  c()
-    for (gene in genes_risk) {
-      total_snps       <- sample(10:30, 1)
-      snp_entry        <- table(sample(x = c("low", "intermediate", "high"), size = total_snps,  replace = TRUE, prob = c(0.6, 0.3, 0.1)))
-      names(snp_entry) <- paste(gene, names(snp_entry), sep = "_")
-      gene_outcome     <- c(gene_outcome, snp_entry)
-    }
-    outcome_vector  <- c(outcome_vector, "low")
-    prognosis_table <- cbind(prognosis_table, patient = gene_outcome[match(genes_risk_rownames, names(gene_outcome))])
-
-    
+    prob <- c(0.6, 0.3, 0.1)
+    outcome_vector <- c(outcome_vector, "low")
   } else if (outcome_seed >= 95) {
-    gene_outcome <-  c()
-    for (gene in genes_risk) {
-      total_snps <- sample(10:30, 1)
-      snp_entry <- table(sample(x = c("low", "intermediate", "high"), size = total_snps,  replace = TRUE, prob = c(0.2, 0.3, 0.5)))
-      names(snp_entry) <- paste(gene, names(snp_entry), sep = "_")
-      gene_outcome <- c(gene_outcome, snp_entry)
-    }
+    prob <- c(0.2, 0.3, 0.5)
     outcome_vector <- c(outcome_vector, "high")
-    prognosis_table <- cbind(prognosis_table, patient = gene_outcome[match(genes_risk_rownames, names(gene_outcome))])
-    
   } else {
-    gene_outcome <-  c()
-    for (gene in genes_risk) {
-      total_snps <- sample(10:30, 1)
-      snp_entry <- table(sample(x = c("low", "intermediate", "high"), size = total_snps,  replace = TRUE, prob = c(0.5, 0.3, 0.2)))
-      names(snp_entry) <- paste(gene, names(snp_entry), sep = "_")
-      gene_outcome <- c(gene_outcome, snp_entry)
-    }
+    prob <- c(0.5, 0.3, 0.2)
     outcome_vector <- c(outcome_vector, "intermediate")
-    prognosis_table <- cbind(prognosis_table, patient = gene_outcome[match(genes_risk_rownames, names(gene_outcome))])
   }
+
+  gene_outcome <- c()
+  for (gene in genes_risk) {
+    total_snps       <- sample(10:30, 1)
+    snp_entry        <- table(sample(x = c("low", "intermediate", "high"), size = total_snps, replace = TRUE, prob = prob))
+    names(snp_entry) <- paste(gene, names(snp_entry), sep = "_")
+    gene_outcome     <- c(gene_outcome, snp_entry)
+  }
+  
+  prognosis_table <- cbind(prognosis_table, patient = gene_outcome[match(genes_risk_rownames, names(gene_outcome))])
 }
 
-#Clean up the results data set
-prognosis_table                         <- prognosis_table[, -1]
-rownames(prognosis_table)               <- genes_risk_rownames
-colnames(prognosis_table)               <- names(outcome_vector) <- paste0("patient", 1:1000)
+prognosis_table <- prognosis_table[, -1]
+rownames(prognosis_table) <- genes_risk_rownames
+colnames(prognosis_table) <- paste0("patient", 1:1000)
 prognosis_table[is.na(prognosis_table)] <- 0
 
-prognosis_table[1:5, 1:5]
-outcome_vector[1:5]
-
-#For added "realism" we can include missing data
+# Introduce missing data
 missing_data <- sample(1:1000, 250)
-
 for (patient in missing_data) {
-  sim_missing                <- prognosis_table[, patient]
-  num_missing                <- sample(genes_risk, sample(1:7, 1))
-  sim_missing[grepl(paste(num_missing,collapse="|"), names(sim_missing))] <- NA
+  sim_missing <- prognosis_table[, patient]
+  num_missing <- sample(genes_risk, sample(1:7, 1))
+  sim_missing[grepl(paste(num_missing, collapse = "|"), names(sim_missing))] <- NA
   prognosis_table[, patient] <- sim_missing
 }
 
-shape2 <- dim(prognosis_table)
-cat("Shape of the matrix:", shape2[1], "x", shape2[2], "\n")
-
-# ----------------- MISSING DATA-----------------------------------------------
-num_missing        <- sum(is.na(prognosis_table))
-missing_percentage <- sum( num_missing / (nrow(prognosis_table) * ncol(prognosis_table))) * 100
-# there are 6.18% missing values 
+cat("Shape of the matrix:", dim(prognosis_table)[1], "x", dim(prognosis_table)[2], "\n")
 
 # ----------------- IMPUTATION ------------------------------------------------
 library(parallel)
 library(doParallel)
-
+library(mice)
 
 cl <- makeCluster(4)
 registerDoParallel(cl)
 
-# (feature x patients) -> (patients x features)
 prognosis_table_transposed <- t(prognosis_table)
 
-# Predictive Mean ~ long time 
-imputed_data <- mice(prognosis_table_transposed, m = 1, method = 'pmm', seed = 123,maxit=1,parallel=TRUE)
+imputed_data <- mice(prognosis_table_transposed, m = 1, method = 'pmm', seed = 123, maxit = 1, parallel = TRUE)
 
 stopCluster(cl)
 
-prognosis_table  <- complete(imputed_data)
+# Get complete imputed data (patients x features)
+imputed_patients <- complete(imputed_data)
 
-#----------------DATASET--------------------------------------------------------
-target_gene  <- "TERT_high" 
-y            <- prognosis_table[[target_gene]]
-y            <- make.names(y)
+# ------------------ K-MEANS CLUSTERING -----------------------------
+# Optional scaling
+imputed_scaled <- scale(imputed_patients)
 
-X            <- prognosis_table[, !(colnames(prognosis_table) %in% target_gene), drop = FALSE]
+# Perform K-means clustering
+set.seed(123)
+k_clusters          <- 3
+kmeans_result       <- kmeans(imputed_scaled, centers = k_clusters, nstart = 25)
+cluster_assignments <- kmeans_result$cluster
+cat("Cluster sizes:\n")
+print(table(cluster_assignments))
 
-# -------------TRAIN_TEST_SPLIT ------------------------------------------------
-library(ranger)
-library(caret)
-trainIndex    <- createDataPartition(prognosis_table[, ncol(prognosis_table)], p = .8, 
-                                  list = FALSE, 
-                                  times = 1)
-train_data    <- prognosis_table[trainIndex, ]
-test_data     <- prognosis_table[-trainIndex, ]
+# ------------------ PCA VISUALIZATION --------------------
+library(ggplot2)
 
-#Specify training parameters
-train_control <- trainControl(method = "cv", number = 10,classProbs=TRUE)
+pca_result         <- prcomp(imputed_scaled)
+pca_df             <- as.data.frame(pca_result$x[, 1:2])
+pca_df$Cluster     <- factor(cluster_assignments)
 
-if (any(is.na(train_data))) {
-  train_data <- na.omit(train_data)
-  warning("NA values detected and removed.")
-}
-
-#----------------PANCREATIC CANCER RISK GENE PREDICTION-------------------------
-
-#Train a selected model with specified parameters
-model <- train(y           = y_train,  # Target (now a factor)
-               x           = X_train, # Assuming last column is the target
-               method      = "ranger",
-               metric      = "ROC",
-               trControl   = train_control,
-               tuneLength  = 5)
-
-#Apply it to the testing dataset
-y_predictions <- predict(model, newdata = as.data.frame(test_data))
-y_predictions <- factor(y_predictions)
-y_true        <- as.factor(test_data[[target_gene]])
-all_levels    <- union(levels(y_true), levels(y_predictions))
-
-y_predictions <- factor(y_predictions, levels = all_levels)
-y_true        <- factor(y_true, levels = all_levels)
-#------------------CONFUSION MATRIX---------------------------------------------
-confusion     <- confusionMatrix(y_predictions,y_true)
-conf_table    <- as.table(confusion)
-conf_df       <- as.data.frame(conf_table)
-
-head(conf_df)
-
-cat("\n[OVERALL ACCURACY]: ", confusion$overall['Accuracy'], "\n")
-
-
-cat("\n[PRECISION FOR EACH CLASS]:\n")
-precision    <- confusion$byClass[, "Precision"]
-print(precision)
-
+ggplot(pca_df, aes(x = PC1, y = PC2, color = Cluster)) +
+  geom_point(alpha = 0.7, size = 2) +
+  labs(title = "K-Means Clustering of Pancreatic Cancer Genotype Profiles",
+       x = "Principal Component 1", y = "Principal Component 2") +
+  theme_minimal()
